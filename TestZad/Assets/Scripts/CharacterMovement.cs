@@ -1,5 +1,5 @@
 using System.Collections;
-using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 
 public class CharacterMovement : MonoBehaviour
@@ -11,6 +11,13 @@ public class CharacterMovement : MonoBehaviour
     private bool hasSpeedBoost = false;
     private Coroutine speedBoostCoroutine;
     private bool isFlipping = false;
+    private bool canDoubleJump = false; // Флаг, позволяющий совершить двойной прыжок
+    private bool isDoubleJumping = false; // Флаг, указывающий, что происходит двойной прыжок
+    private Coroutine doubleJumpCoroutine; // Корутина для отключения двойного прыжка
+
+    // Ссылки на элементы UI
+    public TextMeshProUGUI speedText;
+    public TextMeshProUGUI heightText;
 
     void Start()
     {
@@ -20,6 +27,12 @@ public class CharacterMovement : MonoBehaviour
 
     void Update()
     {
+        // Обновление текста скорости
+        speedText.text = "Скорость: " + speed;
+
+        // Обновление текста высоты
+        heightText.text = "Высота: " + transform.position.y;
+
         float moveHorizontal = Input.GetAxis("Horizontal");
         float moveVertical = Input.GetAxis("Vertical");
 
@@ -27,11 +40,9 @@ public class CharacterMovement : MonoBehaviour
 
         if (movement != Vector3.zero)
         {
-            // Преобразование ввода движения в глобальную систему координат относительно камеры
             Vector3 cameraForward = Camera.main.transform.forward;
             Vector3 cameraRight = Camera.main.transform.right;
 
-            // Игнорируем компонент высоты направления камеры
             cameraForward.y = 0;
             cameraRight.y = 0;
 
@@ -44,10 +55,16 @@ public class CharacterMovement : MonoBehaviour
             transform.Translate(desiredDirection * speed * Time.deltaTime, Space.World);
         }
 
-        if (Input.GetKeyDown(KeyCode.Space) && isGrounded && !isFlipping)
+        if (Input.GetKeyDown(KeyCode.Space))
         {
-            rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
-            StartCoroutine(Flip());
+            if (isGrounded)
+            {
+                Jump();
+            }
+            else if (canDoubleJump && !isDoubleJumping)
+            {
+                DoubleJump();
+            }
         }
     }
 
@@ -56,6 +73,7 @@ public class CharacterMovement : MonoBehaviour
         if (collision.gameObject.CompareTag("Ground"))
         {
             isGrounded = true;
+            isDoubleJumping = false;
         }
     }
 
@@ -65,6 +83,21 @@ public class CharacterMovement : MonoBehaviour
         {
             isGrounded = false;
         }
+    }
+
+    void Jump()
+    {
+        rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+        StartCoroutine(Flip()); // Воспроизводим анимацию прыжка
+        isGrounded = false;
+    }
+
+    void DoubleJump()
+    {
+        rb.velocity = new Vector3(rb.velocity.x, 0, rb.velocity.z);
+        rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+        StartCoroutine(Flip()); // Воспроизводим анимацию двойного прыжка
+        isDoubleJumping = true;
     }
 
     public void ApplySpeedBoost(float duration)
@@ -79,14 +112,17 @@ public class CharacterMovement : MonoBehaviour
 
     private IEnumerator SpeedBoost(float duration)
     {
-        float originalSpeed = speed;
-        speed *= 2.0f;
-        hasSpeedBoost = true;
+        if (!hasSpeedBoost) // Увеличиваем скорость только если бонус не активен
+        {
+            float originalSpeed = speed;
+            speed *= 2.0f;
+            hasSpeedBoost = true;
 
-        yield return new WaitForSeconds(duration);
+            yield return new WaitForSeconds(duration);
 
-        speed = originalSpeed;
-        hasSpeedBoost = false;
+            speed = originalSpeed;
+            hasSpeedBoost = false;
+        }
     }
 
     private IEnumerator Flip()
@@ -110,5 +146,30 @@ public class CharacterMovement : MonoBehaviour
 
         transform.rotation = startRotation; // Вернуть вращение к нормальному состоянию
         isFlipping = false;
+    }
+
+    public void EnableDoubleJump(float duration)
+    {
+        if (!canDoubleJump) // Включаем двойной прыжок только если он не активен
+        {
+            canDoubleJump = true;
+            if (doubleJumpCoroutine != null)
+            {
+                StopCoroutine(doubleJumpCoroutine);
+            }
+            doubleJumpCoroutine = StartCoroutine(DisableDoubleJumpAfter(duration));
+        }
+    }
+
+    private IEnumerator DisableDoubleJumpAfter(float duration)
+    {
+        yield return new WaitForSeconds(duration);
+        DisableDoubleJump();
+    }
+
+    public void DisableDoubleJump()
+    {
+        canDoubleJump = false;
+        isDoubleJumping = false;
     }
 }

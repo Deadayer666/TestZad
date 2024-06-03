@@ -4,47 +4,79 @@ using UnityEngine;
 
 public class DoubleJumpBonus : MonoBehaviour
 {
-    public float duration = 10f; // Длительность эффекта в секундах
-    public GameObject player; // Ссылка на игрока для применения эффекта
-    public Animation jumpAnimation; // Анимация прыжка
+    public float rotationSpeed = 50.0f;
+    public float duration = 10f;
+    private bool isCollected = false;
+    private Vector3 originalPosition; // Храним начальную позицию бонуса
+    private Coroutine respawnCoroutine; // Корутина для респавна бонуса
 
-    private bool isDoubleJumpActive = false; // Флаг активности двойного прыжка
-    private float remainingDuration; // Оставшаяся длительность эффекта
+    public GameObject player;
+    private CharacterMovement characterMovement;
 
     private void Start()
     {
-        remainingDuration = duration;
+        if (player != null)
+        {
+            characterMovement = player.GetComponent<CharacterMovement>();
+        }
+        originalPosition = transform.position;
     }
 
     private void Update()
     {
-        if (isDoubleJumpActive)
+        if (!isCollected)
         {
-            remainingDuration -= Time.deltaTime;
-            if (remainingDuration <= 0)
+            transform.Rotate(Vector3.up, rotationSpeed * Time.deltaTime);
+        }
+    }
+
+    void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Player") && !isCollected)
+        {
+            CharacterMovement player = other.GetComponent<CharacterMovement>();
+            if (player != null)
             {
-                DeactivateDoubleJump();
+                player.EnableDoubleJump(duration);
+                StartCoroutine(CollectEffect());
             }
         }
     }
 
-    public void ActivateDoubleJump()
+    IEnumerator CollectEffect()
     {
-        if (!isDoubleJumpActive)
+        isCollected = true;
+        float disappearDuration = 1.0f;
+
+        for (float t = 0; t < disappearDuration; t += Time.deltaTime)
         {
-            player.GetComponent<CharacterMovement>().EnableDoubleJump();
-            isDoubleJumpActive = true;
-            remainingDuration = duration;
+            transform.position = originalPosition + Vector3.up * (t / disappearDuration);
+            transform.localScale = Vector3.one * (1 - t / disappearDuration);
+            yield return null;
         }
-        else
-        {
-            remainingDuration = duration;
-        }
+
+        // Деактивировать бонус после завершения анимации
+        gameObject.SetActive(false);
+        respawnCoroutine = StartCoroutine(RespawnAfterDelay(5.0f));
     }
 
-    private void DeactivateDoubleJump()
+    IEnumerator RespawnAfterDelay(float delay)
     {
-        player.GetComponent<CharacterMovement>().DisableDoubleJump();
-        isDoubleJumpActive = false;
+        yield return new WaitForSeconds(delay);
+        // Показать бонус в исходной позиции
+        gameObject.SetActive(true);
+        transform.position = originalPosition;
+        isCollected = false;
+        // Отменить корутину респавна
+        respawnCoroutine = null;
+    }
+
+    // Отмена корутины при разрушении объекта
+    void OnDestroy()
+    {
+        if (respawnCoroutine != null)
+        {
+            StopCoroutine(respawnCoroutine);
+        }
     }
 }
