@@ -8,7 +8,7 @@ public class DoubleJumpBonus : MonoBehaviour
     public float duration = 10f;
     private bool isCollected = false;
     private Vector3 originalPosition; // Храним начальную позицию бонуса
-    private Coroutine respawnCoroutine; // Корутина для респавна бонуса
+    private DoubleJumpBonusSpawn bonusSpawn; // Ссылка на компонент BonusSpawn
 
     public GameObject player;
     private CharacterMovement characterMovement;
@@ -20,6 +20,17 @@ public class DoubleJumpBonus : MonoBehaviour
             characterMovement = player.GetComponent<CharacterMovement>();
         }
         originalPosition = transform.position;
+
+        // Найти компонент BonusSpawn в сцене и вызвать RespawnBonus()
+        bonusSpawn = FindObjectOfType<DoubleJumpBonusSpawn>(); // Найти DoubleJumpBonusSpawn
+        if (bonusSpawn != null)
+        {
+            bonusSpawn.RespawnBonus();
+        }
+        else
+        {
+            Debug.LogError("BonusSpawn component not found in the scene.");
+        }
     }
 
     private void Update()
@@ -38,45 +49,46 @@ public class DoubleJumpBonus : MonoBehaviour
             if (player != null)
             {
                 player.EnableDoubleJump(duration);
-                StartCoroutine(CollectEffect());
+                CollectEffect();
             }
         }
     }
 
-    IEnumerator CollectEffect()
+    void CollectEffect()
     {
+        if (isCollected)
+        {
+            return;
+        }
+
         isCollected = true;
         float disappearDuration = 1.0f;
 
-        for (float t = 0; t < disappearDuration; t += Time.deltaTime)
+        // Анимация исчезновения
+        StartCoroutine(DisappearAnimation(disappearDuration));
+    }
+
+    IEnumerator DisappearAnimation(float duration)
+    {
+        Vector3 targetPosition = originalPosition + Vector3.up;
+        Vector3 targetScale = Vector3.zero;
+
+        float elapsedTime = 0;
+        while (elapsedTime < duration)
         {
-            transform.position = originalPosition + Vector3.up * (t / disappearDuration);
-            transform.localScale = Vector3.one * (1 - t / disappearDuration);
+            transform.position = Vector3.Lerp(originalPosition, targetPosition, elapsedTime / duration);
+            transform.localScale = Vector3.Lerp(Vector3.one, targetScale, elapsedTime / duration);
+            elapsedTime += Time.deltaTime;
             yield return null;
         }
 
-        // Деактивировать бонус после завершения анимации
-        gameObject.SetActive(false);
-        respawnCoroutine = StartCoroutine(RespawnAfterDelay(5.0f));
-    }
+        // Уничтожить бонус после анимации
+        Destroy(gameObject);
 
-    IEnumerator RespawnAfterDelay(float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        // Показать бонус в исходной позиции
-        gameObject.SetActive(true);
-        transform.position = originalPosition;
-        isCollected = false;
-        // Отменить корутину респавна
-        respawnCoroutine = null;
-    }
-
-    // Отмена корутины при разрушении объекта
-    void OnDestroy()
-    {
-        if (respawnCoroutine != null)
+        // Сбросить флаг спавна
+        if (bonusSpawn != null)
         {
-            StopCoroutine(respawnCoroutine);
+            bonusSpawn.ResetSpawnedFlag();
         }
     }
 }

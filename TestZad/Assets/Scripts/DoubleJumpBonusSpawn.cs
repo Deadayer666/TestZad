@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class BonusSpawn : MonoBehaviour
+public class DoubleJumpBonusSpawn : MonoBehaviour
 {
     public GameObject bonusPrefab; // Префаб объекта бонуса
     public Vector3 spawnPosition; // Координаты спавна нового бонуса

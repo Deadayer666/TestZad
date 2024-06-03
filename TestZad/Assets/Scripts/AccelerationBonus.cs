@@ -9,12 +9,12 @@ public class AccelerationBonus : MonoBehaviour
 
     private bool isCollected = false;
     private Vector3 originalPosition; // Храним начальную позицию бонуса
-    private BonusSpawn bonusSpawn; // Ссылка на компонент BonusSpawn
+    private AccelerationBonusSpawn bonusSpawn; // Ссылка на компонент BonusSpawn
 
     void Start()
     {
         // Найти компонент BonusSpawn в сцене и вызвать RespawnBonus()
-        bonusSpawn = FindObjectOfType<BonusSpawn>();
+        bonusSpawn = FindObjectOfType<AccelerationBonusSpawn>();
         if (bonusSpawn != null)
         {
             bonusSpawn.RespawnBonus();

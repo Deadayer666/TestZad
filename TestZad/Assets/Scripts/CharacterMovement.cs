@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
@@ -19,10 +20,24 @@ public class CharacterMovement : MonoBehaviour
     public TextMeshProUGUI speedText;
     public TextMeshProUGUI heightText;
 
+    // Элементы UI для отображения информации о бонусах
+    public GameObject[] bonusUIs; // Массив объектов, содержащих элементы UI для бонусов
+    public TextMeshProUGUI[] bonusTypeTexts; // Массив текстов для отображения типа бонусов
+    public TextMeshProUGUI[] bonusTimerTexts; // Массив текстов для отображения таймеров бонусов
+
+    private List<BonusInfo> activeBonuses = new List<BonusInfo>();
+
     void Start()
     {
+        Cursor.lockState = CursorLockMode.Locked;
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
+
+        // Инициализация активных бонусов по количеству UI слотов
+        for (int i = 0; i < bonusUIs.Length; i++)
+        {
+            activeBonuses.Add(new BonusInfo());
+        }
     }
 
     void Update()
@@ -108,6 +123,7 @@ public class CharacterMovement : MonoBehaviour
         }
 
         speedBoostCoroutine = StartCoroutine(SpeedBoost(duration));
+        AddBonusUI("Ускорение", duration);
     }
 
     private IEnumerator SpeedBoost(float duration)
@@ -128,7 +144,7 @@ public class CharacterMovement : MonoBehaviour
     private IEnumerator Flip()
     {
         isFlipping = true;
-        float flipDuration = .5f; // Длительность сальто
+        float flipDuration = .3f; // Длительность сальто
         float elapsedTime = 0f;
 
         Quaternion startRotation = transform.rotation;
@@ -150,15 +166,79 @@ public class CharacterMovement : MonoBehaviour
 
     public void EnableDoubleJump(float duration)
     {
-        if (!canDoubleJump) // Включаем двойной прыжок только если он не активен
+        if (doubleJumpCoroutine != null)
         {
-            canDoubleJump = true;
-            if (doubleJumpCoroutine != null)
-            {
-                StopCoroutine(doubleJumpCoroutine);
-            }
-            doubleJumpCoroutine = StartCoroutine(DisableDoubleJumpAfter(duration));
+            StopCoroutine(doubleJumpCoroutine);
         }
+
+        doubleJumpCoroutine = StartCoroutine(DoubleJumpDuration(duration));
+        AddBonusUI("Двойной прыжок", duration);
+    }
+
+    private IEnumerator DoubleJumpDuration(float duration)
+    {
+        canDoubleJump = true;
+        yield return new WaitForSeconds(duration);
+        canDoubleJump = false;
+    }
+
+    private void AddBonusUI(string bonusType, float duration)
+    {
+        // Найти бонус с таким же типом
+        int existingSlot = -1;
+        for (int i = 0; i < activeBonuses.Count; i++)
+        {
+            if (activeBonuses[i].isActive && activeBonuses[i].type == bonusType)
+            {
+                existingSlot = i;
+                break;
+            }
+        }
+
+        // Если бонус уже активен, обновить его продолжительность
+        if (existingSlot != -1)
+        {
+            activeBonuses[existingSlot].remainingTime = duration;
+            activeBonuses[existingSlot].timerText.text = duration.ToString("F1");
+        }
+        else
+        {
+            // Найти свободный слот для нового бонуса
+            int freeSlot = -1;
+            for (int i = 0; i < activeBonuses.Count; i++)
+            {
+                if (!activeBonuses[i].isActive)
+                {
+                    freeSlot = i;
+                    break;
+                }
+            }
+
+            // Проверить, что слот найден и он находится в пределах массивов
+            if (freeSlot != -1 && freeSlot < bonusUIs.Length)
+            {
+                // Активировать бонус и обновить UI
+                activeBonuses[freeSlot].Activate(bonusType, duration, bonusUIs[freeSlot], bonusTypeTexts[freeSlot], bonusTimerTexts[freeSlot]);
+                StartCoroutine(UpdateBonusTimer(freeSlot));
+            }
+            else
+            {
+                Debug.LogWarning("Нет доступных слотов для отображения бонусов или превышен лимит массивов UI.");
+            }
+        }
+    }
+
+    private IEnumerator UpdateBonusTimer(int slotIndex)
+    {
+        while (activeBonuses[slotIndex].remainingTime > 0)
+        {
+            activeBonuses[slotIndex].remainingTime -= Time.deltaTime;
+            activeBonuses[slotIndex].timerText.text = activeBonuses[slotIndex].remainingTime.ToString("F1");
+            yield return null;
+        }
+
+        // Скрыть UI бонуса после окончания времени
+        activeBonuses[slotIndex].Deactivate();
     }
 
     private IEnumerator DisableDoubleJumpAfter(float duration)
@@ -171,5 +251,36 @@ public class CharacterMovement : MonoBehaviour
     {
         canDoubleJump = false;
         isDoubleJumping = false;
+    }
+
+    private class BonusInfo
+    {
+        public bool isActive = false;
+        public string type;
+        public float remainingTime;
+        public GameObject uiElement;
+        public TextMeshProUGUI typeText;
+        public TextMeshProUGUI timerText;
+
+        public void Activate(string bonusType, float duration, GameObject ui, TextMeshProUGUI typeTxt, TextMeshProUGUI timerTxt)
+        {
+            type = bonusType;
+            remainingTime = duration;
+            uiElement = ui;
+            typeText = typeTxt;
+            timerText = timerTxt;
+
+            uiElement.SetActive(true);
+            typeText.text = bonusType;
+            timerText.text = duration.ToString("F1");
+
+            isActive = true;
+        }
+
+        public void Deactivate()
+        {
+            uiElement.SetActive(false);
+            isActive = false;
+        }
     }
 }
