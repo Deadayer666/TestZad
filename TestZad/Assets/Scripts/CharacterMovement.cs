@@ -10,6 +10,7 @@ public class CharacterMovement : MonoBehaviour
     private bool isGrounded;
     private bool hasSpeedBoost = false;
     private Coroutine speedBoostCoroutine;
+    private bool isFlipping = false;
 
     void Start()
     {
@@ -43,9 +44,10 @@ public class CharacterMovement : MonoBehaviour
             transform.Translate(desiredDirection * speed * Time.deltaTime, Space.World);
         }
 
-        if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
+        if (Input.GetKeyDown(KeyCode.Space) && isGrounded && !isFlipping)
         {
             rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+            StartCoroutine(Flip());
         }
     }
 
@@ -85,5 +87,28 @@ public class CharacterMovement : MonoBehaviour
 
         speed = originalSpeed;
         hasSpeedBoost = false;
+    }
+
+    private IEnumerator Flip()
+    {
+        isFlipping = true;
+        float flipDuration = .5f; // Длительность сальто
+        float elapsedTime = 0f;
+
+        Quaternion startRotation = transform.rotation;
+
+        while (elapsedTime < flipDuration)
+        {
+            float flipProgress = elapsedTime / flipDuration;
+            float currentAngle = Mathf.Lerp(0, 360, flipProgress);
+
+            transform.rotation = startRotation * Quaternion.Euler(currentAngle, 0, 0);
+
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+
+        transform.rotation = startRotation; // Вернуть вращение к нормальному состоянию
+        isFlipping = false;
     }
 }
