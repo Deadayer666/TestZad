@@ -23,8 +23,25 @@ public class CharacterMovement : MonoBehaviour
         float moveVertical = Input.GetAxis("Vertical");
 
         Vector3 movement = new Vector3(moveHorizontal, 0.0f, moveVertical);
-        movement = transform.TransformDirection(movement) * speed * Time.deltaTime;
-        transform.position += movement;
+
+        if (movement != Vector3.zero)
+        {
+            // Преобразование ввода движения в глобальную систему координат относительно камеры
+            Vector3 cameraForward = Camera.main.transform.forward;
+            Vector3 cameraRight = Camera.main.transform.right;
+
+            // Игнорируем компонент высоты направления камеры
+            cameraForward.y = 0;
+            cameraRight.y = 0;
+
+            cameraForward.Normalize();
+            cameraRight.Normalize();
+
+            Vector3 desiredDirection = cameraForward * moveVertical + cameraRight * moveHorizontal;
+
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(desiredDirection), 0.1f);
+            transform.Translate(desiredDirection * speed * Time.deltaTime, Space.World);
+        }
 
         if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
         {
