@@ -4163,6 +4163,7 @@ Received Import Request.
 Start importing Assets/Scripts/DoubleJumpBonus.cs using Guid(4e5dafcf30f3e434787eff7cc1b52cdf) Importer(815301076,1909f56bfc062723c751e8b465ee728b)  -> (artifact id: 'd23f2c0553c42c704cee0d8bbe0e5cea') in 0.001866 seconds
 Number of updated asset objects reloaded before import = 0
 Number of asset objects unloaded after import = 0
+<<<<<<< HEAD
 ========================================================================
 Received Import Request.
   Time since last request: 138.046239 seconds.
@@ -8645,3 +8646,5 @@ C:\WINDOWS\SYSTEM32\dbghelp.dll:dbghelp.dll (00007FFAE2FF0000), size: 1982464 (r
 
 A crash has been intercepted by the crash handler. For call stack and other details, see the latest crash report generated in:
  * C:/Users/User/AppData/Local/Temp/Unity/Editor/Crashes
+=======
+>>>>>>> main
